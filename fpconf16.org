@@ -1,0 +1,203 @@
+#+AUTHOR:    Денис Редозубов, @rufuse
+#+EMAIL:     @rufuse
+#+TITLE:     Как победить функциональную кодобазу
+#+OPTIONS:   H:2 num:t toc:nil \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
+#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+STARTUP: beamer
+#+STARTUP: latexpreview
+#+BEAMER_THEME: Singapore [height=20pt]
+#+BEAMER_COLOR_THEME: crane
+#+LATEX_HEADER: \usepackage[LGRx,T1,T2A]{fontenc}
+#+LATEX_HEADER: \usepackage[utf8]{inputenc}
+#+LATEX_HEADER: \usepackage[russian,english]{babel}
+#+LATEX_HEADER: \usepackage{tikz}
+#+LATEX_HEADER: \usepackage{minted}
+#+LATEX_HEADER: \usetikzlibrary{matrix}
+#+LATEX_HEADER: \usepackage{lmodern}
+#+LATEX_HEADER: \newminted{haskell}{}
+#+LATEX_HEADER: \usemintedstyle{monokai}
+#+LATEX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [unicode,presentation,bigger]
+
+
+* Введение
+
+** Ссылка на слайды
+
+http://
+
+** Disclaimer
+
+Язык программирования не принципиален, чтобы извлечь что-то из этого рассказа.
+
+** О чем этот доклад
+
+Как размышлять о разработке, чтобы кодобаза жила долго и её можно было править?
+
+** Кодобаза
+
+*** Haskell
+*** 1 317 481 правок
+*** 50_000+ LOC
+*** 4 пересекающихся проекта
+
+** Что пишет код за нас
+
+*** TH
+*** Generics
+
+* Архитектура
+
+** Основной вопрос
+
+Сколько у кода потребителей?
+
+** Libraries
+
+Максимальный уровень абстракции и code reuse.
+Как библиотека будет использоваться пользователями - открытый вопрос.
+
+** Business applications
+
+Приложение реализует какой-то процесс, который как правило, лишь частично специфирован.
+Специфицированная часть должна результировать в специализированный код, в противопоставление полиморфному и абстрактному.
+
+* Рефакторинг
+
+** Что такое рефакторинг
+
+Процесс, позволяющий поддерживать адекватный уровень:
+- абстракции
+- инкапсуляции
+- логики
+- гигиены
+
+** Цена рефакторинга
+
+Метрика, которую мы хотим удешевить в долгосрочной перспективе.
+
+**
+
+На каких уровнях можно рефакторить?
+
+** Рефакторинг кода
+
+Привычное понимание слова, то что ответственные программисты делают по умолчанию, когда пытаются уменьшить технический долг
+
+** Рефакторинг пакетной структуры и зависимостей.
+
+Еще одна очевидная часть, упомянуты лишь для полноты картины.
+
+** Рефакторинг на уровне типов
+
+Создание отдельных типов для разных концепций, имеющий одинаковое "машинное" представление.
+
+#+BEGIN_SRC haskell
+
+newtype Quantity = Quantity { fromQuantity :: Int }
+
+newtype ColorCode = ColorCode { fromColorCode :: Int }
+#+END_SRC
+
+** Рефакторинг на уровне типов (2)
+
+** Рефакторинг модульной структуры
+
+#+begin_src dot :file modules.png :cmdline -Kdot -Tpng
+digraph G {
+  size="8,6"
+  ratio=expand
+  edge [dir=both]
+  plcnet [shape=box, label="PLC Network"]
+  subgraph cluster_wrapline {
+    label="Wrapline Control System"
+    color=purple
+    subgraph {
+    rank=same
+    exec
+    sharedmem [style=filled, fillcolor=lightgrey, shape=box]
+    }
+    edge[style=dotted, dir=none]
+    exec -> opserver
+    exec -> db
+    plc -> exec
+    edge [style=line, dir=both]
+    exec -> sharedmem
+    sharedmem -> db
+    plc -> sharedmem
+    sharedmem -> opserver
+  }
+  plcnet -> plc [constraint=false]
+  millwide [shape=box, label="Millwide System"]
+  db -> millwide
+
+  subgraph cluster_opclients {
+    color=blue
+    label="Operator Clients"
+    rankdir=LR
+    labelloc=b
+    node[label=client]
+    opserver -> client1
+    opserver -> client2
+    opserver -> client3
+  }
+}
+#+end_src
+
+** Разумные метрики для импортов
+
+Импорты модулей являются стрелками в направленном графе зависимостей внутри вашей кодобазы.
+Всякий раз как вы меняете содержимое модулей, вы можете сломать импорт каких-то имён, ломая код.
+Задача сводится к тому, чтобы снизить количество ломающихся импортов.
+
+** Как улучшить импорты?
+
+Меньшее количество импортов приводит к меньшему количеству поломок. В терминах графов зависимостей это означает что увеличение количества путей(по стрелкам-импортам) между двумя модулями приводит к увеличению числа проблем.
+
+Лечение:
+- импортирование более "высокоуровневых модулей", инкапсулирующих более низкоуровневые.
+- культура реэкспортов
+
+** (Почему хаскеллисты не умеют этого делать?)
+
+Контрпример:
+
+#+BEGIN_SRC haskell
+
+import Control.Monad
+#+END_SRC
+
+и
+
+#+BEGIN_SRC haskell
+
+import Control.Monad.State
+#+END_SRC
+
+Почему последний тянет часть определений из первого?
+
+* FPeople
+
+** Functional programmers
+
+Лучшие кандидаты для написания максимально абстрактного кода, что абсолютно потрясающе!
+
+** Functional programmers
+
+.. но не всегда хорошо, если вы пишете бизнес-приложение!
+
+* Sweet spots
+
+** Уровень абстракции
+
+#+BEGIN_QUOTATION
+
+Good general theory does not search for the maximum generality, but for the right generality.
+--- Saunders Mac Lane
+#+END_QUOTATION
+
+** types vs tests
+
+*** Время выполнения тестов vs время компиляции
+
+** static vs dynamic
