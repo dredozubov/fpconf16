@@ -103,46 +103,23 @@ newtype ColorCode = ColorCode { fromColorCode :: Int }
 
 ** Рефакторинг модульной структуры
 
-#+begin_src dot :file modules.png :cmdline -Kdot -Tpng
-digraph G {
-  size="8,6"
-  ratio=expand
-  edge [dir=both]
-  plcnet [shape=box, label="PLC Network"]
-  subgraph cluster_wrapline {
-    label="Wrapline Control System"
-    color=purple
-    subgraph {
-    rank=same
-    exec
-    sharedmem [style=filled, fillcolor=lightgrey, shape=box]
-    }
-    edge[style=dotted, dir=none]
-    exec -> opserver
-    exec -> db
-    plc -> exec
-    edge [style=line, dir=both]
-    exec -> sharedmem
-    sharedmem -> db
-    plc -> sharedmem
-    sharedmem -> opserver
-  }
-  plcnet -> plc [constraint=false]
-  millwide [shape=box, label="Millwide System"]
-  db -> millwide
+#+BEGIN_UML
+skinparam monochrome true
+FitsHdu <|-- PrimaryHdu
+FitsHdu <|-- ExtensionHdu
 
-  subgraph cluster_opclients {
-    color=blue
-    label="Operator Clients"
-    rankdir=LR
-    labelloc=b
-    node[label=client]
-    opserver -> client1
-    opserver -> client2
-    opserver -> client3
-  }
-}
-#+end_src
+FitsHdu : header
+FitsHdu : getHeaderKeyword()
+
+ExtensionHdu <|-- ImageHdu
+ImageHdu : image
+ImageHdu : getPixel(row, column)
+
+ExtensionHdu <|-- BinaryTableHdu
+BinaryTableHdu : table
+BinaryTableHdu : getRow(row)
+BinaryTableHdu : getColumn(column)
+#+END_UML
 
 ** Разумные метрики для импортов
 
@@ -178,6 +155,7 @@ import Control.Monad.State
 
 * FPeople
 
+
 ** Functional programmers
 
 Лучшие кандидаты для написания максимально абстрактного кода, что абсолютно потрясающе!
@@ -201,3 +179,20 @@ Good general theory does not search for the maximum generality, but for the righ
 *** Время выполнения тестов vs время компиляции
 
 ** static vs dynamic
+
+** TEST
+
+#+begin_src plantuml :file tryout.png
+  Alice -> Bob: synchronous call
+  Alice ->> Bob: asynchronous call
+#+end_src
+
+#+begin_src ditaa :file blue.png :cmdline -r
++---------+
+| cBLU    |
+|         |
+|    +----+
+|    |cPNK|
+|    |    |
++----+----+
+#+end_src
