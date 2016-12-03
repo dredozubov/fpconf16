@@ -185,7 +185,7 @@ newtype SlotId = SlotId { SlotId :: Int }
 
 # Types vs Tests
 
-Тесты позволяют покрыть часть инвариантов "by construction":
+Типы позволяют покрыть часть инвариантов "by construction":
 
 ```
 type Passengers = NonEmpty Passenger
